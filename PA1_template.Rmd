@@ -1,25 +1,144 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Assignment 1"
+author: "MSK80"
+date: "Monday, July 13, 2015"
+output: html_document
 ---
+##Reading Data
+```{r}
+activity <- read.csv("activity.csv")
+```
+Data description
+The variables included in this dataset are:
+
+- steps: Number of steps taking in a 5-minute interval (missing values are coded as NA)
+
+- date: The date on which the measurement was taken in YYYY-MM-DD format
+
+- interval: Identifier for the 5-minute interval in which measurement was taken
+
+The dataset is stored in a comma-separated-value (CSV) file and there are a total of 17,568 observations in this dataset.
+
+##Data summary
+```{r}
+activity$date <- as.Date(activity$date)
+summary(activity)
+```
 
 
-## Loading and preprocessing the data
+# What is mean total number of steps taken per day?
 
+Input data contains missing values stored as NA. For further calculations they will be removed from analysis.
+```{r}
+data<-na.omit(activity)
+```
+Getting list of unique dates. To view how wide the data range is.
+```{r}
+dates <- data$date[!duplicated(data$date)]
+dates
+```
+Calculating total sum of steps made per day.
+```{r}
+p1<-aggregate(list(data$steps),by=list(data$date),FUN=sum)
+colnames(p1) <- c("Date","Sum.of.Steps")
+```
+Creating histogram of steps per day.
+```{r}
+hist(p1[,2],breaks=25,main="Histogram of number steps takne per day",xlab="Number of steps")
+```
 
+Summary of data containing number steps made per day.
+```{r}
+summary(p1[,2])
+```
+Total mean number of steps taken per day is 10760.
 
-## What is mean total number of steps taken per day?
+Total median number of steps taken per day is 10770.
 
+## What is average daily activity pattern?
+Creating table with averaged number of steps made in every 5 minute interval.
+```{r}
+p2<-aggregate(list(data$steps),by=list(data$interval),FUN=mean)
+colnames(p2) <- c("Interval","Average.number.of.steps")
+```
 
+Creating a plot to review potential daily pattern.
+```{r}
+plot(p2,type="l")
+```
 
-## What is the average daily activity pattern?
+Searching for maximum number of steps in 5-minute interval.
+```{r}
+max <- max(p2[,2])
+max
+a<-p2[p2[,2]==max,]
+a
+```
+Maximum average number of steps is in interval:
+```{r}
+a[,1]
+```
 
+## Missing values
+Counting number of NAs.
+```{r}
+sum(is.na(activity$steps),TRUE)
+```
+New dataset is created in which all missing values will be filled up with average value for particular 5-minute interval.
+```{r}
+activity2<-activity
+for (i in 1:length(activity$steps)) {
+        if(is.na(activity[i,1])) {
+                activity2[i,1] <- p2[p2[,1]==activity[i,3],2]
+        }
+}
+```
 
+To verify how much new dataset differs from the old one (containing NAs), histogram will be vreated.
 
-## Imputing missing values
+Calculating sum of steps per day.
+```{r}
+p3<-aggregate(list(activity2$steps),by=list(activity2$date),FUN=sum)
+colnames(p1) <- c("Date","Sum.of.Steps")
+hist(p3[,2],breaks=25,main="Histogram of number steps taken per day",xlab="Number of steps")
+```
+Summary of steps per day:
+```{r}
+summary(p3[,2])
+```
+Due to simple fact, that the total number of observations is increased, histogram changes. Inserting values calculated out
+of averaged values makes median value equal to median, which can prove that datapoints are normally distributed.
+It can be shown by using normality test:
+```{r}
+shapiro.test(p3[,2])
+```
 
+##Are there differences in activity patterns between weekdays and weekends?
+Creating new column in dataset containing weekday.
+```{r}
+activity2$weekday <- weekdays(activity2$date)
+activity2$week <- "weekday"
+activity2$week[activity2$weekday=="Sunday"] <- "weekend"
+activity2$week[activity2$weekday=="Saturday"] <- "weekend"
+```
+Creating two additional tables that separate data points recorded during weekend and weekday.
+```{r}
+data1 <- subset(activity2,week=="weekday")
+data2 <- subset(activity2,week=="weekend")
+```
+Creating summary tables, which contain average number of steps taken per interval during weekend and weekday.
+```{r}
+p4 <- aggregate(list(data1$steps),by=list(data1$interval),FUN=mean)
+colnames(p4) <- c("Interval","Average.number.of.steps")
+p4$week <- "weekday"
+p5 <- aggregate(list(data2$steps),by=list(data2$interval),FUN=mean)
+colnames(p5) <- c("Interval","Average.number.of.steps")
+p5$week <- "weekend"
+data3 <- rbind(p4,p5)
+```
+Plot showing differences between datasets made during weekday and weekend.
+```{r}
+library(ggplot2)
+ggplot(data3,aes(x=Interval))+geom_line(aes(y=Average.number.of.steps))+facet_grid(week~.)
+```
 
-
-## Are there differences in activity patterns between weekdays and weekends?
